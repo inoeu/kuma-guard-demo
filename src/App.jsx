@@ -137,6 +137,31 @@ const alerts = [
     y: 70,
     tone: 'blue',
   },
+  {
+    id: 'YK-260605-05',
+    level: 2,
+    title: 'シカと判定・通知抑制',
+    place: '果樹園東側の農道',
+    area: '山北町モデル / 玄倉地区',
+    time: '07:58:21',
+    score: 0.14,
+    status: 'low',
+    source: 'AIカメラ A-07',
+    type: '中型四足歩行・角あり',
+    weather: '晴れ / 朝霧残り',
+    note: 'AIはシカ79%・クマ候補14%と判定。住民通知を自動抑制し、判定結果は学習データとして記録します。',
+    recommended: '通知不要・学習キューへ記録',
+    distance: '果樹園まで60m',
+    eta: '対応不要',
+    owner: '農林課',
+    channelPlan: '庁内記録のみ',
+    evidence: '角・体型・歩様からシカと判定（シカ79% / クマ14%）',
+    thumbnail: 'photo',
+    animal: 'deer',
+    x: 80,
+    y: 62,
+    tone: 'blue',
+  },
 ];
 
 const recipientsSeed = [
@@ -324,6 +349,28 @@ const visionDetections = [
       { label: '大型動物', value: 78 },
       { label: '人', value: 7 },
       { label: '静止熱源', value: 6 },
+    ],
+  },
+  {
+    id: 'VIS-A07-006',
+    alertId: 'YK-260605-05',
+    title: '果樹園東側の中型四足歩行',
+    kind: '固定カメラ',
+    source: 'AIカメラ A-07',
+    frame: '07:58:21 / 2連続フレーム',
+    location: '果樹園まで60m',
+    confidence: 79,
+    model: 'BearVision v0.3',
+    status: 'review',
+    verdict: 'シカ候補',
+    action: '通知せず学習データへ',
+    thumbnail: 'photo',
+    animal: 'deer',
+    box: { left: 34, top: 16, width: 44, height: 66 },
+    classes: [
+      { label: 'シカ', value: 79 },
+      { label: 'クマ候補', value: 14 },
+      { label: '樹影', value: 5 },
     ],
   },
 ];
@@ -859,7 +906,7 @@ function App() {
                   onClick={() => selectAlert(item.id, '最新アラート')}
                   type="button"
                 >
-                  <EvidenceThumb type={item.thumbnail} />
+                  <EvidenceThumb type={item.thumbnail} animal={item.animal} />
                   <div>
                     <span className="alert-time">{item.time}<em>レベル {item.level}</em></span>
                     <strong>{item.title}</strong>
@@ -901,7 +948,7 @@ function App() {
           <aside className="decision-panel">
             <PanelHeader title="対応判断パネル" action={selected.id} danger />
             <div className="selected-summary">
-              <EvidenceThumb type={selected.thumbnail} large />
+              <EvidenceThumb type={selected.thumbnail} animal={selected.animal} large />
               <div>
                 <span className={`status-pill ${statusTone(selected)}`}>{statusText(selected)}</span>
                 <h2>{selected.title}</h2>
@@ -984,7 +1031,7 @@ function App() {
             <div className="evidence-rail">
               {alertItems.map((item) => (
                 <button className="evidence-item" key={item.id} onClick={() => selectAlert(item.id, '証拠・記録')} type="button">
-                  <EvidenceThumb type={item.thumbnail} />
+                  <EvidenceThumb type={item.thumbnail} animal={item.animal} />
                   <span>{item.time}</span>
                   <strong>{Math.round(item.score * 100)}%</strong>
                 </button>
@@ -1555,6 +1602,26 @@ function BearBody({ fill }) {
   );
 }
 
+// シカのシルエット（細身・長い脚・上げた首・角）。BearBodyと同じ枠内に収まる座標。
+function DeerBody({ fill }) {
+  return (
+    <g fill={fill}>
+      <rect x="122" y="124" width="5.5" height="48" rx="2.5" />
+      <rect x="137" y="126" width="5.5" height="46" rx="2.5" />
+      <rect x="190" y="124" width="5.5" height="48" rx="2.5" />
+      <rect x="204" y="126" width="5.5" height="46" rx="2.5" />
+      <ellipse cx="162" cy="112" rx="47" ry="18" />
+      <path d="M112 110 q-9 1 -12 9 q9 -1 14 -4 z" />
+      <path d="M196 116 C 206 96 214 82 224 70 L 235 78 C 225 92 215 104 207 122 Z" />
+      <ellipse cx="232" cy="66" rx="13" ry="8" transform="rotate(-24 232 66)" />
+      <ellipse cx="244" cy="74" rx="7" ry="4.5" transform="rotate(-24 244 74)" />
+      <ellipse cx="225" cy="54" rx="3.4" ry="7" transform="rotate(-32 225 54)" />
+      <ellipse cx="233" cy="53" rx="3.4" ry="7" transform="rotate(-8 233 53)" />
+      <path d="M226 50 L221 38 M226 50 L229 39 M221 44 L217 39 M233 49 L237 38 M233 49 L241 42" fill="none" stroke={fill} strokeWidth="2.2" strokeLinecap="round" />
+    </g>
+  );
+}
+
 // クマの足跡（肉球＋5つの指）。受信側で位置・縮尺・不透明度を指定して並べる。
 function PawPrint({ x, y, s, o }) {
   return (
@@ -1570,7 +1637,7 @@ function PawPrint({ x, y, s, o }) {
 }
 
 // 夜間IRトレイルカメラ：暗い林・地面・グロー・クマ影＋アイシャイン・粒状ノイズ・走査線・周辺減光
-function PhotoScene() {
+function PhotoScene({ animal = 'bear' }) {
   return (
     <>
       <rect width="320" height="200" fill="url(#kgIrSky)" />
@@ -1583,13 +1650,24 @@ function PhotoScene() {
       </g>
       <path d="M0 156 Q160 144 320 158 L320 200 L0 200 Z" fill="#091410" />
       <ellipse cx="162" cy="176" rx="118" ry="15" fill="#0f2218" opacity="0.7" />
-      <g filter="url(#kgFur)">
-        <BearBody fill="url(#kgBearIr)" />
-      </g>
-      <ellipse cx="178" cy="172" rx="62" ry="9" fill="#060c08" opacity="0.5" />
-      <ellipse cx="247" cy="128" rx="5.5" ry="4.2" fill="#2b332c" />
-      <circle cx="232" cy="116" r="5" fill="#bfe9ff" opacity="0.3" />
-      <circle cx="232" cy="116" r="2.3" fill="#eaf8ff" />
+      {animal === 'deer' ? (
+        <>
+          <ellipse cx="170" cy="172" rx="56" ry="8" fill="#060c08" opacity="0.5" />
+          <DeerBody fill="url(#kgBearIr)" />
+          <circle cx="236" cy="63" r="3.4" fill="#bfe9ff" opacity="0.3" />
+          <circle cx="236" cy="63" r="1.6" fill="#eaf8ff" />
+        </>
+      ) : (
+        <>
+          <g filter="url(#kgFur)">
+            <BearBody fill="url(#kgBearIr)" />
+          </g>
+          <ellipse cx="178" cy="172" rx="62" ry="9" fill="#060c08" opacity="0.5" />
+          <ellipse cx="247" cy="128" rx="5.5" ry="4.2" fill="#2b332c" />
+          <circle cx="232" cy="116" r="5" fill="#bfe9ff" opacity="0.3" />
+          <circle cx="232" cy="116" r="2.3" fill="#eaf8ff" />
+        </>
+      )}
       <rect width="320" height="200" filter="url(#kgGrain)" opacity="0.4" />
       <rect width="320" height="200" fill="url(#kgScan)" opacity="0.5" />
       <rect width="320" height="200" fill="url(#kgVignette)" />
@@ -1598,13 +1676,13 @@ function PhotoScene() {
 }
 
 // サーマルカメラ：寒色背景に熱源のクマ（白→黄→橙→赤）、十字照準、温度スケール、温度表示
-function ThermalScene() {
+function ThermalScene({ animal = 'bear' }) {
   return (
     <>
       <rect width="320" height="200" fill="url(#kgThermalBg)" />
       <ellipse cx="160" cy="196" rx="210" ry="64" fill="#3a1450" opacity="0.6" />
       <g filter="url(#kgThermBlur)">
-        <BearBody fill="url(#kgBearThermal)" />
+        {animal === 'deer' ? <DeerBody fill="url(#kgBearThermal)" /> : <BearBody fill="url(#kgBearThermal)" />}
       </g>
       <ellipse cx="176" cy="112" rx="22" ry="14" fill="#fff7e6" opacity="0.45" filter="url(#kgThermBlur)" />
       <g stroke="#eafff5" strokeWidth="1" strokeOpacity="0.6" fill="none">
@@ -1703,12 +1781,12 @@ function TrackScene() {
 }
 
 // サムネ種別に応じた検知シーンSVG。viewBoxを slice で枠いっぱいに描画する。
-function DetectionScene({ type }) {
+function DetectionScene({ type, animal = 'bear' }) {
   const scene =
-    type === 'thermal' ? <ThermalScene /> :
+    type === 'thermal' ? <ThermalScene animal={animal} /> :
     type === 'drone' ? <DroneScene /> :
     type === 'track' ? <TrackScene /> :
-    <PhotoScene />;
+    <PhotoScene animal={animal} />;
   return (
     <svg className="scene-svg" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       {scene}
@@ -1716,10 +1794,10 @@ function DetectionScene({ type }) {
   );
 }
 
-function EvidenceThumb({ type, large = false }) {
+function EvidenceThumb({ type, animal, large = false }) {
   return (
     <div className={`evidence-thumb ${type} ${large ? 'large' : ''}`} aria-hidden="true">
-      <DetectionScene type={type} />
+      <DetectionScene type={type} animal={animal} />
     </div>
   );
 }
@@ -1797,7 +1875,7 @@ function VisionAiPanel({ items, selected, onSelect, onConfirm, onFieldCheck, onF
             onClick={() => onSelect(item.id)}
             type="button"
           >
-            <EvidenceThumb type={item.thumbnail} />
+            <EvidenceThumb type={item.thumbnail} animal={item.animal} />
             <span>
               <strong>{item.kind}</strong>
               <small>{item.confidence}% / {visionStatusText(item.status)}</small>
@@ -1812,7 +1890,7 @@ function VisionAiPanel({ items, selected, onSelect, onConfirm, onFieldCheck, onF
 function VisionFrame({ item }) {
   return (
     <div className={`vision-frame ${item.thumbnail}`} aria-hidden="true">
-      <DetectionScene type={item.thumbnail} />
+      <DetectionScene type={item.thumbnail} animal={item.animal} />
       <span className="vision-grid-overlay" />
       <span
         className="vision-box"
